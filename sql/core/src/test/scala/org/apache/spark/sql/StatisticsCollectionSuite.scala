@@ -25,7 +25,6 @@ import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
 import org.apache.spark.sql.catalyst.catalog.CatalogColumnStat
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.util.DateTimeTestUtils
@@ -171,6 +170,15 @@ class StatisticsCollectionSuite extends StatisticsCollectionTestBase with Shared
           val roundtrip = CatalogColumnStat.fromMap("table_is_foo", field.name, v.toMap(k))
           assert(roundtrip == Some(v))
         }
+      }
+    }
+  }
+
+  test("SPARK-33812: column stats round trip serialization with splitting histogram property") {
+    withSQLConf(SQLConf.HIVE_TABLE_PROPERTY_LENGTH_THRESHOLD.key -> "10") {
+      statsWithHgms.foreach { case (k, v) =>
+        val roundtrip = CatalogColumnStat.fromMap("t", k, v.toMap(k))
+        assert(roundtrip == Some(v))
       }
     }
   }
@@ -527,7 +535,7 @@ class StatisticsCollectionSuite extends StatisticsCollectionTestBase with Shared
       val errMsg = intercept[AnalysisException] {
         sql("ANALYZE TABLE tempView COMPUTE STATISTICS FOR COLUMNS id")
       }.getMessage
-      assert(errMsg.contains(s"Table or view 'tempView' not found in database 'default'"))
+      assert(errMsg.contains("Temporary view `tempView` is not cached for analyzing columns"))
 
       // Cache the view then analyze it
       sql("CACHE TABLE tempView")
@@ -543,13 +551,15 @@ class StatisticsCollectionSuite extends StatisticsCollectionTestBase with Shared
       val errMsg1 = intercept[AnalysisException] {
         sql(s"ANALYZE TABLE $globalTempDB.gTempView COMPUTE STATISTICS FOR COLUMNS id")
       }.getMessage
-      assert(errMsg1.contains(s"Table or view not found: $globalTempDB.gTempView"))
+      assert(errMsg1.contains("Table or view not found: " +
+        s"$globalTempDB.gTempView"))
       // Analyzes in a global temporary view
       sql("CREATE GLOBAL TEMP VIEW gTempView AS SELECT * FROM range(1, 30)")
       val errMsg2 = intercept[AnalysisException] {
         sql(s"ANALYZE TABLE $globalTempDB.gTempView COMPUTE STATISTICS FOR COLUMNS id")
       }.getMessage
-      assert(errMsg2.contains(s"Table or view 'gTempView' not found in database '$globalTempDB'"))
+      assert(errMsg2.contains(
+        s"Temporary view `$globalTempDB`.`gTempView` is not cached for analyzing columns"))
 
       // Cache the view then analyze it
       sql(s"CACHE TABLE $globalTempDB.gTempView")
@@ -667,6 +677,38 @@ class StatisticsCollectionSuite extends StatisticsCollectionTestBase with Shared
           }.getMessage
           assert(errorMsg.contains("Found duplicate column(s)"))
         }
+      }
+    }
+  }
+
+  test("SPARK-34119: Keep necessary stats after PruneFileSourcePartitions") {
+    withTable("SPARK_34119") {
+      withSQLConf(SQLConf.CBO_ENABLED.key -> "true") {
+        sql(s"CREATE TABLE SPARK_34119 using parquet PARTITIONED BY (p) AS " +
+          "(SELECT id, CAST(id % 5 AS STRING) AS p FROM range(10))")
+        sql(s"ANALYZE TABLE SPARK_34119 COMPUTE STATISTICS FOR ALL COLUMNS")
+
+        checkOptimizedPlanStats(sql(s"SELECT id FROM SPARK_34119"),
+          160L,
+          Some(10),
+          Seq(ColumnStat(
+            distinctCount = Some(10),
+            min = Some(0),
+            max = Some(9),
+            nullCount = Some(0),
+            avgLen = Some(LongType.defaultSize),
+            maxLen = Some(LongType.defaultSize))))
+
+        checkOptimizedPlanStats(sql("SELECT id FROM SPARK_34119 WHERE p = '2'"),
+          32L,
+          Some(2),
+          Seq(ColumnStat(
+            distinctCount = Some(2),
+            min = Some(0),
+            max = Some(9),
+            nullCount = Some(0),
+            avgLen = Some(LongType.defaultSize),
+            maxLen = Some(LongType.defaultSize))))
       }
     }
   }

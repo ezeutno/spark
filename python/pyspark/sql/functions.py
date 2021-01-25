@@ -80,8 +80,10 @@ def _invoke_binary_math_function(name, col1, col2):
     )
 
 
-def _options_to_str(options):
-    return {key: to_str(value) for (key, value) in options.items()}
+def _options_to_str(options=None):
+    if options:
+        return {key: to_str(value) for (key, value) in options.items()}
+    return {}
 
 
 def lit(col):
@@ -220,6 +222,19 @@ def acos(col):
     return _invoke_function_over_column("acos", col)
 
 
+def acosh(col):
+    """
+    Computes inverse hyperbolic cosine of the input column.
+
+    .. versionadded:: 3.1.0
+
+    Returns
+    -------
+    :class:`Column`
+    """
+    return _invoke_function_over_column("acosh", col)
+
+
 def asin(col):
     """
     .. versionadded:: 1.3.0
@@ -233,6 +248,19 @@ def asin(col):
     return _invoke_function_over_column("asin", col)
 
 
+def asinh(col):
+    """
+    Computes inverse hyperbolic sine of the input column.
+
+    .. versionadded:: 3.1.0
+
+    Returns
+    -------
+    :class:`Column`
+    """
+    return _invoke_function_over_column("asinh", col)
+
+
 def atan(col):
     """
     .. versionadded:: 1.4.0
@@ -243,6 +271,19 @@ def atan(col):
         inverse tangent of `col`, as if computed by `java.lang.Math.atan()`
     """
     return _invoke_function_over_column("atan", col)
+
+
+def atanh(col):
+    """
+    Computes inverse hyperbolic tangent of the input column.
+
+    .. versionadded:: 3.1.0
+
+    Returns
+    -------
+    :class:`Column`
+    """
+    return _invoke_function_over_column("atanh", col)
 
 
 @since(1.4)
@@ -435,7 +476,7 @@ def toDegrees(col):
     .. deprecated:: 2.1.0
         Use :func:`degrees` instead.
     """
-    warnings.warn("Deprecated in 2.1, use degrees instead.", DeprecationWarning)
+    warnings.warn("Deprecated in 2.1, use degrees instead.", FutureWarning)
     return degrees(col)
 
 
@@ -445,7 +486,7 @@ def toRadians(col):
     .. deprecated:: 2.1.0
         Use :func:`radians` instead.
     """
-    warnings.warn("Deprecated in 2.1, use radians instead.", DeprecationWarning)
+    warnings.warn("Deprecated in 2.1, use radians instead.", FutureWarning)
     return radians(col)
 
 
@@ -754,7 +795,7 @@ def approxCountDistinct(col, rsd=None):
     .. deprecated:: 2.1.0
         Use :func:`approx_count_distinct` instead.
     """
-    warnings.warn("Deprecated in 2.1, use approx_count_distinct instead.", DeprecationWarning)
+    warnings.warn("Deprecated in 2.1, use approx_count_distinct instead.", FutureWarning)
     return approx_count_distinct(col, rsd)
 
 
@@ -1261,7 +1302,7 @@ def spark_partition_id():
 
     Notes
     -----
-    This is indeterministic because it depends on data partitioning and task scheduling.
+    This is non deterministic because it depends on data partitioning and task scheduling.
 
     Examples
     --------
@@ -3415,7 +3456,7 @@ def json_tuple(col, *fields):
     return Column(jc)
 
 
-def from_json(col, schema, options={}):
+def from_json(col, schema, options=None):
     """
     Parses a column containing a JSON string into a :class:`MapType` with :class:`StringType`
     as keys type, :class:`StructType` or :class:`ArrayType` with
@@ -3471,7 +3512,7 @@ def from_json(col, schema, options={}):
     return Column(jc)
 
 
-def to_json(col, options={}):
+def to_json(col, options=None):
     """
     Converts a column containing a :class:`StructType`, :class:`ArrayType` or a :class:`MapType`
     into a JSON string. Throws an exception, in the case of an unsupported type.
@@ -3518,7 +3559,7 @@ def to_json(col, options={}):
     return Column(jc)
 
 
-def schema_of_json(json, options={}):
+def schema_of_json(json, options=None):
     """
     Parses a JSON string and infers its schema in DDL format.
 
@@ -3527,7 +3568,7 @@ def schema_of_json(json, options={}):
     Parameters
     ----------
     json : :class:`Column` or str
-        a JSON string or a string literal containing a JSON string.
+        a JSON string or a foldable string column containing a JSON string.
     options : dict, optional
         options to control parsing. accepts the same options as the JSON datasource
 
@@ -3555,7 +3596,7 @@ def schema_of_json(json, options={}):
     return Column(jc)
 
 
-def schema_of_csv(csv, options={}):
+def schema_of_csv(csv, options=None):
     """
     Parses a CSV string and infers its schema in DDL format.
 
@@ -3564,7 +3605,7 @@ def schema_of_csv(csv, options={}):
     Parameters
     ----------
     csv : :class:`Column` or str
-        a CSV string or a string literal containing a CSV string.
+        a CSV string or a foldable string column containing a CSV string.
     options : dict, optional
         options to control parsing. accepts the same options as the CSV datasource
 
@@ -3588,7 +3629,7 @@ def schema_of_csv(csv, options={}):
     return Column(jc)
 
 
-def to_csv(col, options={}):
+def to_csv(col, options=None):
     """
     Converts a column containing a :class:`StructType` into a CSV string.
     Throws an exception, in the case of an unsupported type.
@@ -3999,7 +4040,7 @@ def sequence(start, stop, step=None):
             _to_java_column(start), _to_java_column(stop), _to_java_column(step)))
 
 
-def from_csv(col, schema, options={}):
+def from_csv(col, schema, options=None):
     """
     Parses a column containing a CSV string to a row with the specified schema.
     Returns `null`, in the case of an unparseable string.
@@ -4071,7 +4112,7 @@ def _get_lambda_parameters(f):
     # We should exclude functions that use
     # variable args and keyword argnames
     # as well as keyword only args
-    supported_parmeter_types = {
+    supported_parameter_types = {
         inspect.Parameter.POSITIONAL_OR_KEYWORD,
         inspect.Parameter.POSITIONAL_ONLY,
     }
@@ -4086,7 +4127,7 @@ def _get_lambda_parameters(f):
         )
 
     # and all arguments can be used as positional
-    if not all(p.kind in supported_parmeter_types for p in parameters):
+    if not all(p.kind in supported_parameter_types for p in parameters):
         raise ValueError(
             "f should use only POSITIONAL or POSITIONAL OR KEYWORD arguments"
         )
@@ -4314,7 +4355,7 @@ def filter(col, f):
     return _invoke_higher_order_function("ArrayFilter", [col], [f])
 
 
-def aggregate(col, zero, merge, finish=None):
+def aggregate(col, initialValue, merge, finish=None):
     """
     Applies a binary operator to an initial state and all elements in the array,
     and reduces this to a single state. The final state is converted into the final result
@@ -4331,7 +4372,7 @@ def aggregate(col, zero, merge, finish=None):
     ----------
     col : :class:`Column` or str
         name of column or expression
-    zero : :class:`Column` or str
+    initialValue : :class:`Column` or str
         initial value. Name of column or expression
     merge : function
         a binary function ``(acc: Column, x: Column) -> Column...`` returning expression
@@ -4375,19 +4416,19 @@ def aggregate(col, zero, merge, finish=None):
     if finish is not None:
         return _invoke_higher_order_function(
             "ArrayAggregate",
-            [col, zero],
+            [col, initialValue],
             [merge, finish]
         )
 
     else:
         return _invoke_higher_order_function(
             "ArrayAggregate",
-            [col, zero],
+            [col, initialValue],
             [merge]
         )
 
 
-def zip_with(col1, col2, f):
+def zip_with(left, right, f):
     """
     Merge two given arrays, element-wise, into a single array using a function.
     If one array is shorter, nulls are appended at the end to match the length of the longer
@@ -4397,9 +4438,9 @@ def zip_with(col1, col2, f):
 
     Parameters
     ----------
-    col1 : :class:`Column` or str
+    left : :class:`Column` or str
         name of the first column or expression
-    col2 : :class:`Column` or str
+    right : :class:`Column` or str
         name of the second column or expression
     f : function
         a binary function ``(x1: Column, x2: Column) -> Column...``
@@ -4430,7 +4471,7 @@ def zip_with(col1, col2, f):
     |[foo_1, bar_2, 3]|
     +-----------------+
     """
-    return _invoke_higher_order_function("ZipWith", [col1, col2], [f])
+    return _invoke_higher_order_function("ZipWith", [left, right], [f])
 
 
 def transform_keys(col, f):
@@ -4601,7 +4642,7 @@ def years(col):
 
     Notes
     -----
-    This function can be used only in combinatiion with
+    This function can be used only in combination with
     :py:meth:`~pyspark.sql.readwriter.DataFrameWriterV2.partitionedBy`
     method of the `DataFrameWriterV2`.
 
@@ -4625,7 +4666,7 @@ def months(col):
 
     Notes
     -----
-    This function can be used only in combinatiion with
+    This function can be used only in combination with
     :py:meth:`~pyspark.sql.readwriter.DataFrameWriterV2.partitionedBy`
     method of the `DataFrameWriterV2`.
 
@@ -4649,7 +4690,7 @@ def days(col):
 
     Notes
     -----
-    This function can be used only in combinatiion with
+    This function can be used only in combination with
     :py:meth:`~pyspark.sql.readwriter.DataFrameWriterV2.partitionedBy`
     method of the `DataFrameWriterV2`.
 
@@ -4673,7 +4714,7 @@ def hours(col):
 
     Notes
     -----
-    This function can be used only in combinatiion with
+    This function can be used only in combination with
     :py:meth:`~pyspark.sql.readwriter.DataFrameWriterV2.partitionedBy`
     method of the `DataFrameWriterV2`.
 

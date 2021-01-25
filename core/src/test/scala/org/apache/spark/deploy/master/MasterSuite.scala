@@ -58,7 +58,7 @@ class MockWorker(master: RpcEndpointRef, conf: SparkConf = new SparkConf) extend
   val id = seq.toString
   override val rpcEnv: RpcEnv = RpcEnv.create("worker", "localhost", seq,
     conf, new SecurityManager(conf))
-  var apps = new mutable.HashMap[String, String]()
+  val apps = new mutable.HashMap[String, String]()
   val driverIdToAppId = new mutable.HashMap[String, String]()
   def newDriver(driverId: String): RpcEndpointRef = {
     val name = s"driver_${drivers.size}"
@@ -784,7 +784,7 @@ class MasterSuite extends SparkFunSuite
     var worker: MockExecutorLaunchFailWorker = null
     try {
       val conf = new SparkConf()
-      // SPARK-32250: When running test on Github Action machine, the available processors in JVM
+      // SPARK-32250: When running test on GitHub Action machine, the available processors in JVM
       // is only 2, while on Jenkins it's 32. For this specific test, 2 available processors, which
       // also decides number of threads in Dispatcher, is not enough to consume the messages. In
       // the worst situation, MockExecutorLaunchFailWorker would occupy these 2 threads for

@@ -17,7 +17,6 @@
 
 package org.apache.spark.executor
 
-import java.io.File
 import java.net.URL
 import java.nio.ByteBuffer
 import java.util.Locale
@@ -83,9 +82,10 @@ private[spark] class CoarseGrainedExecutorBackend(
 
   override def onStart(): Unit = {
     if (env.conf.get(DECOMMISSION_ENABLED)) {
-      logInfo("Registering PWR handler to trigger decommissioning.")
-      SignalUtils.register("PWR", "Failed to register SIGPWR handler - " +
-        "disabling executor decommission feature.") (self.askSync[Boolean](ExecutorSigPWRReceived))
+      val signal = env.conf.get(EXECUTOR_DECOMMISSION_SIGNAL)
+      logInfo(s"Registering SIG$signal handler to trigger decommissioning.")
+      SignalUtils.register(signal, s"Failed to register SIG$signal handler - disabling" +
+        s" executor decommission feature.") (self.askSync[Boolean](ExecutorDecommissionSigReceived))
     }
 
     logInfo("Connecting to driver: " + driverUrl)
@@ -209,7 +209,7 @@ private[spark] class CoarseGrainedExecutorBackend(
   }
 
   override def receiveAndReply(context: RpcCallContext): PartialFunction[Any, Unit] = {
-    case ExecutorSigPWRReceived =>
+    case ExecutorDecommissionSigReceived =>
       var driverNotified = false
       try {
         driver.foreach { driverRef =>

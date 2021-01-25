@@ -29,16 +29,15 @@ import org.apache.spark.sql.connector.catalog.CatalogV2Util.assertNoNullTypeInSc
 import org.apache.spark.sql.connector.expressions.{FieldReference, RewritableTransform}
 import org.apache.spark.sql.execution.command.DDLUtils
 import org.apache.spark.sql.execution.datasources.v2.FileDataSourceV2
-import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.internal.SQLConf.StoreAssignmentPolicy
 import org.apache.spark.sql.sources.InsertableRelation
 import org.apache.spark.sql.types.{AtomicType, StructType}
+import org.apache.spark.sql.util.PartitioningUtils.normalizePartitionSpec
 import org.apache.spark.sql.util.SchemaUtils
 
 /**
  * Replaces [[UnresolvedRelation]]s if the plan is for direct query on files.
  */
-object ResolveSQLOnFile extends Rule[LogicalPlan] {
+class ResolveSQLOnFile(sparkSession: SparkSession) extends Rule[LogicalPlan] {
   private def maybeSQLFile(u: UnresolvedRelation): Boolean = {
     conf.runSQLonFile && u.multipartIdentifier.size == 2
   }
@@ -47,7 +46,7 @@ object ResolveSQLOnFile extends Rule[LogicalPlan] {
     case u: UnresolvedRelation if maybeSQLFile(u) =>
       try {
         val dataSource = DataSource(
-          SparkSession.active,
+          sparkSession,
           paths = u.multipartIdentifier.last :: Nil,
           className = u.multipartIdentifier.head)
 
@@ -73,9 +72,9 @@ object ResolveSQLOnFile extends Rule[LogicalPlan] {
 /**
  * Preprocess [[CreateTable]], to do some normalization and checking.
  */
-object PreprocessTableCreation extends Rule[LogicalPlan] {
+case class PreprocessTableCreation(sparkSession: SparkSession) extends Rule[LogicalPlan] {
   // catalog is a def and not a val/lazy val as the latter would introduce a circular reference
-  private def catalog = SparkSession.active.sessionState.catalog
+  private def catalog = sparkSession.sessionState.catalog
 
   def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
     // When we CREATE TABLE without specifying the table schema, we should fail the query if
@@ -240,7 +239,7 @@ object PreprocessTableCreation extends Rule[LogicalPlan] {
         c.copy(tableDesc = normalizedTable.copy(schema = reorderedSchema))
       }
 
-    case create: V2CreateTablePlan =>
+    case create: V2CreateTablePlan if create.childrenResolved =>
       val schema = create.tableSchema
       val partitioning = create.partitioning
       val identifier = create.tableName
@@ -385,10 +384,10 @@ object PreprocessTableInsertion extends Rule[LogicalPlan] {
   private def preprocess(
       insert: InsertIntoStatement,
       tblName: String,
-      partColNames: Seq[String],
+      partColNames: StructType,
       catalogTable: Option[CatalogTable]): InsertIntoStatement = {
 
-    val normalizedPartSpec = PartitioningUtils.normalizePartitionSpec(
+    val normalizedPartSpec = normalizePartitionSpec(
       insert.partitionSpec, partColNames, tblName, conf.resolver)
 
     val staticPartCols = normalizedPartSpec.filter(_._2.isDefined).keySet
@@ -407,7 +406,8 @@ object PreprocessTableInsertion extends Rule[LogicalPlan] {
       catalogTable.get.tracksPartitionsInCatalog
     if (partitionsTrackedByCatalog && normalizedPartSpec.nonEmpty) {
       // empty partition column value
-      if (normalizedPartSpec.filter(_._2.isDefined).exists(_._2.get.isEmpty)) {
+      if (normalizedPartSpec.map(_._2)
+          .filter(_.isDefined).map(_.get).exists(v => v != null && v.isEmpty)) {
         val spec = normalizedPartSpec.map(p => p._1 + "=" + p._2).mkString("[", ", ", "]")
         throw new AnalysisException(
           s"Partition spec is invalid. The spec ($spec) contains an empty partition column value")
@@ -430,23 +430,23 @@ object PreprocessTableInsertion extends Rule[LogicalPlan] {
     } else {
       // All partition columns are dynamic because the InsertIntoTable command does
       // not explicitly specify partitioning columns.
-      insert.copy(query = newQuery, partitionSpec = partColNames.map(_ -> None).toMap)
+      insert.copy(query = newQuery, partitionSpec = partColNames.map(_.name).map(_ -> None).toMap)
     }
   }
 
   def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
-    case i @ InsertIntoStatement(table, _, query, _, _) if table.resolved && query.resolved =>
+    case i @ InsertIntoStatement(table, _, _, query, _, _) if table.resolved && query.resolved =>
       table match {
         case relation: HiveTableRelation =>
           val metadata = relation.tableMeta
-          preprocess(i, metadata.identifier.quotedString, metadata.partitionColumnNames,
+          preprocess(i, metadata.identifier.quotedString, metadata.partitionSchema,
             Some(metadata))
         case LogicalRelation(h: HadoopFsRelation, _, catalogTable, _) =>
           val tblName = catalogTable.map(_.identifier.quotedString).getOrElse("unknown")
-          preprocess(i, tblName, h.partitionSchema.map(_.name), catalogTable)
+          preprocess(i, tblName, h.partitionSchema, catalogTable)
         case LogicalRelation(_: InsertableRelation, _, catalogTable, _) =>
           val tblName = catalogTable.map(_.identifier.quotedString).getOrElse("unknown")
-          preprocess(i, tblName, Nil, catalogTable)
+          preprocess(i, tblName, new StructType(), catalogTable)
         case _ => i
       }
   }
@@ -513,7 +513,7 @@ object PreWriteCheck extends (LogicalPlan => Unit) {
 
   def apply(plan: LogicalPlan): Unit = {
     plan.foreach {
-      case InsertIntoStatement(l @ LogicalRelation(relation, _, _, _), partition, query, _, _) =>
+      case InsertIntoStatement(l @ LogicalRelation(relation, _, _, _), partition, _, query, _, _) =>
         // Get all input data source relations of the query.
         val srcRelations = query.collect {
           case LogicalRelation(src, _, _, _) => src
@@ -535,7 +535,7 @@ object PreWriteCheck extends (LogicalPlan => Unit) {
           case _ => failAnalysis(s"$relation does not allow insertion.")
         }
 
-      case InsertIntoStatement(t, _, _, _, _)
+      case InsertIntoStatement(t, _, _, _, _, _)
         if !t.isInstanceOf[LeafNode] ||
           t.isInstanceOf[Range] ||
           t.isInstanceOf[OneRowRelation] ||

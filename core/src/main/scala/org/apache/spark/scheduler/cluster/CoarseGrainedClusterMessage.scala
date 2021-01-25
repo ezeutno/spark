@@ -22,7 +22,6 @@ import java.nio.ByteBuffer
 import org.apache.spark.TaskState.TaskState
 import org.apache.spark.resource.{ResourceInformation, ResourceProfile}
 import org.apache.spark.rpc.RpcEndpointRef
-import org.apache.spark.scheduler.ExecutorDecommissionInfo
 import org.apache.spark.scheduler.ExecutorLossReason
 import org.apache.spark.util.SerializableBuffer
 
@@ -103,9 +102,9 @@ private[spark] object CoarseGrainedClusterMessages {
   // It's used for Standalone's cases, where decommission is triggered at MasterWebUI or Worker.
   object DecommissionExecutor extends CoarseGrainedClusterMessage
 
-  // A message that sent to the executor itself when it receives PWR signal,
+  // A message that sent to the executor itself when it receives a signal,
   // indicating the executor starts to decommission.
-  object ExecutorSigPWRReceived extends CoarseGrainedClusterMessage
+  object ExecutorDecommissionSigReceived extends CoarseGrainedClusterMessage
 
   case class RemoveWorker(workerId: String, host: String, message: String)
     extends CoarseGrainedClusterMessage

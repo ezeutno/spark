@@ -135,7 +135,9 @@ class DataFrame(PandasMapOpsMixin, PandasConversionMixin):
         >>> spark.catalog.dropTempView("people")
         """
         warnings.warn(
-            "Deprecated in 2.0, use createOrReplaceTempView instead.", DeprecationWarning)
+            "Deprecated in 2.0, use createOrReplaceTempView instead.",
+            FutureWarning
+        )
         self._jdf.createOrReplaceTempView(name)
 
     def createTempView(self, name):
@@ -1497,7 +1499,7 @@ class DataFrame(PandasMapOpsMixin, PandasConversionMixin):
         - stddev
         - min
         - max
-        - arbitrary approximate percentiles specified as a percentage (eg, 75%)
+        - arbitrary approximate percentiles specified as a percentage (e.g., 75%)
 
         If no statistics are given, this function computes count, mean, stddev, min,
         approximate quartiles (percentiles at 25%, 50%, and 75%), and max.

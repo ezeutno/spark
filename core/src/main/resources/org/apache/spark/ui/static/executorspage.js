@@ -414,38 +414,74 @@ $(document).ready(function () {
                         },
                         {
                             data: function (row, type) {
-                                if (type !== 'display')
-                                    return row.peakMemoryMetrics.JVMHeapMemory;
-                                else
-                                    return (formatBytes(row.peakMemoryMetrics.JVMHeapMemory, type) + ' / ' +
-                                        formatBytes(row.peakMemoryMetrics.JVMOffHeapMemory, type));
+                                var peakMemoryMetrics = row.peakMemoryMetrics;
+                                if (typeof peakMemoryMetrics !== 'undefined') {
+                                    if (type !== 'display')
+                                        return peakMemoryMetrics.JVMHeapMemory;
+                                    else
+                                        return (formatBytes(peakMemoryMetrics.JVMHeapMemory, type) + ' / ' +
+                                            formatBytes(peakMemoryMetrics.JVMOffHeapMemory, type));
+                                } else {
+                                    if (type !== 'display') {
+                                        return 0;
+                                    } else {
+                                        return '0.0 B / 0.0 B';
+                                    }
+                                }
                             }
                         },
                         {
                             data: function (row, type) {
-                                if (type !== 'display')
-                                    return row.peakMemoryMetrics.OnHeapExecutionMemory;
-                                else
-                                    return (formatBytes(row.peakMemoryMetrics.OnHeapExecutionMemory, type) + ' / ' +
-                                        formatBytes(row.peakMemoryMetrics.OffHeapExecutionMemory, type));
+                                var peakMemoryMetrics = row.peakMemoryMetrics;
+                                if (typeof peakMemoryMetrics !== 'undefined') {
+                                    if (type !== 'display')
+                                        return peakMemoryMetrics.OnHeapExecutionMemory;
+                                    else
+                                        return (formatBytes(peakMemoryMetrics.OnHeapExecutionMemory, type) + ' / ' +
+                                            formatBytes(peakMemoryMetrics.OffHeapExecutionMemory, type));
+                                } else {
+                                    if (type !== 'display') {
+                                        return 0;
+                                    } else {
+                                        return '0.0 B / 0.0 B';
+                                    }
+                                }
                             }
                         },
                         {
                             data: function (row, type) {
-                                if (type !== 'display')
-                                    return row.peakMemoryMetrics.OnHeapStorageMemory;
-                                else
-                                    return (formatBytes(row.peakMemoryMetrics.OnHeapStorageMemory, type) + ' / ' +
-                                        formatBytes(row.peakMemoryMetrics.OffHeapStorageMemory, type));
+                                var peakMemoryMetrics = row.peakMemoryMetrics;
+                                if (typeof peakMemoryMetrics !== 'undefined') {
+                                    if (type !== 'display')
+                                        return peakMemoryMetrics.OnHeapStorageMemory;
+                                    else
+                                        return (formatBytes(peakMemoryMetrics.OnHeapStorageMemory, type) + ' / ' +
+                                            formatBytes(peakMemoryMetrics.OffHeapStorageMemory, type));
+                                } else {
+                                    if (type !== 'display') {
+                                        return 0;
+                                    } else {
+                                        return '0.0 B / 0.0 B';
+                                    }
+                                }
                             }
                         },
                         {
                             data: function (row, type) {
-                                if (type !== 'display')
-                                    return row.peakMemoryMetrics.DirectPoolMemory;
-                                else
-                                    return (formatBytes(row.peakMemoryMetrics.DirectPoolMemory, type) + ' / ' +
-                                        formatBytes(row.peakMemoryMetrics.MappedPoolMemory, type));
+                                var peakMemoryMetrics = row.peakMemoryMetrics;
+                                if (typeof peakMemoryMetrics !== 'undefined') {
+                                    if (type !== 'display')
+                                        return peakMemoryMetrics.DirectPoolMemory;
+                                    else
+                                        return (formatBytes(peakMemoryMetrics.DirectPoolMemory, type) + ' / ' +
+                                            formatBytes(peakMemoryMetrics.MappedPoolMemory, type));
+                                } else {
+                                    if (type !== 'display') {
+                                        return 0;
+                                    } else {
+                                        return '0.0 B / 0.0 B';
+                                    }
+                                }
                             }
                         },
                         {data: 'diskUsed', render: formatBytes},
@@ -608,15 +644,15 @@ $(document).ready(function () {
                     "Show Additional Metrics" +
                     "</a></div>" +
                     "<div class='container-fluid-div ml-4 d-none' id='toggle-metrics'>" +
-                    "<div><input type='checkbox' class='toggle-vis' id='select-all-box'>Select All</div>" +
-                    "<div id='on_heap_memory' class='on-heap-memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='3' data-exec-col-idx='5'>On Heap Memory</div>" +
-                    "<div id='off_heap_memory' class='off-heap-memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='4' data-exec-col-idx='6'>Off Heap Memory</div>" +
-                    "<div id='jvm_on_off_heap_memory' class='jvm_on_off_heap_memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='7'>Peak JVM Memory OnHeap / OffHeap</div>" +
-                    "<div id='on_off_heap_execution_memory' class='on_off_heap_execution_memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='8'>Peak Execution Memory OnHeap / OffHeap</div>" +
-                    "<div id='on_off_heap_storage_memory' class='on_off_heap_storage_memory'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='9'>Peak Storage Memory OnHeap / OffHeap</div>" +
-                    "<div id='direct_mapped_pool_memory' class='direct_mapped_pool_memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='10'>Peak Pool Memory Direct / Mapped</div>" +
-                    "<div id='extra_resources' class='resources-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='13'>Resources</div>" +
-                    "<div id='resource_prof_id' class='resource-prof-id-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='14'>Resource Profile Id</div>" +
+                    "<div><input type='checkbox' class='toggle-vis' id='select-all-box'> Select All</div>" +
+                    "<div id='on_heap_memory' class='on-heap-memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='3' data-exec-col-idx='5'> On Heap Memory</div>" +
+                    "<div id='off_heap_memory' class='off-heap-memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='4' data-exec-col-idx='6'> Off Heap Memory</div>" +
+                    "<div id='jvm_on_off_heap_memory' class='jvm_on_off_heap_memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='7'> Peak JVM Memory OnHeap / OffHeap</div>" +
+                    "<div id='on_off_heap_execution_memory' class='on_off_heap_execution_memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='8'> Peak Execution Memory OnHeap / OffHeap</div>" +
+                    "<div id='on_off_heap_storage_memory' class='on_off_heap_storage_memory'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='9'> Peak Storage Memory OnHeap / OffHeap</div>" +
+                    "<div id='direct_mapped_pool_memory' class='direct_mapped_pool_memory-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='10'> Peak Pool Memory Direct / Mapped</div>" +
+                    "<div id='extra_resources' class='resources-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='13'> Resources</div>" +
+                    "<div id='resource_prof_id' class='resource-prof-id-checkbox-div'><input type='checkbox' class='toggle-vis' data-sum-col-idx='' data-exec-col-idx='14'> Resource Profile Id</div>" +
                     "</div>");
 
                 reselectCheckboxesBasedOnTaskTableState();

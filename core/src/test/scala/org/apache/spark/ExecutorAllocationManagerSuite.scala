@@ -268,7 +268,7 @@ class ExecutorAllocationManagerSuite extends SparkFunSuite {
 
   test("add executors multiple profiles initial num same as needed") {
     // test when the initial number of executors equals the number needed for the first
-    // stage using a non default profile to make sure we request the intitial number
+    // stage using a non default profile to make sure we request the initial number
     // properly. Here initial is 2, each executor in ResourceProfile 1 can have 2 tasks
     // per executor, and start a stage with 4 tasks, which would need 2 executors.
     val clock = new ManualClock(8888L)
@@ -1588,7 +1588,7 @@ class ExecutorAllocationManagerSuite extends SparkFunSuite {
   test("SPARK-23365 Don't update target num executors when killing idle executors") {
     val clock = new ManualClock()
     val manager = createManager(
-      createConf(1, 2, 1).set(config.DYN_ALLOCATION_TESTING, false),
+      createConf(1, 2, 1),
       clock = clock)
 
     when(client.requestTotalExecutors(any(), any(), any())).thenReturn(true)
@@ -1616,19 +1616,17 @@ class ExecutorAllocationManagerSuite extends SparkFunSuite {
     clock.advance(1000)
     manager invokePrivate _updateAndSyncNumExecutorsTarget(clock.nanoTime())
     assert(numExecutorsTargetForDefaultProfileId(manager) === 1)
-    verify(client, never).killExecutors(any(), any(), any(), any())
+    assert(manager.executorMonitor.executorsPendingToRemove().isEmpty)
 
     // now we cross the idle timeout for executor-1, so we kill it.  the really important
     // thing here is that we do *not* ask the executor allocation client to adjust the target
     // number of executors down
-    when(client.killExecutors(Seq("executor-1"), false, false, false))
-      .thenReturn(Seq("executor-1"))
     clock.advance(3000)
     schedule(manager)
     assert(maxNumExecutorsNeededPerResourceProfile(manager, defaultProfile) === 1)
     assert(numExecutorsTargetForDefaultProfileId(manager) === 1)
     // here's the important verify -- we did kill the executors, but did not adjust the target count
-    verify(client).killExecutors(Seq("executor-1"), false, false, false)
+    assert(manager.executorMonitor.executorsPendingToRemove() === Set("executor-1"))
   }
 
   test("SPARK-26758 check executor target number after idle time out ") {

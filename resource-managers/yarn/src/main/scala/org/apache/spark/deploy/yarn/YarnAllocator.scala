@@ -263,7 +263,7 @@ private[yarn] class YarnAllocator(
   private def getPendingAtLocation(
       location: String): Map[Int, Seq[ContainerRequest]] = synchronized {
     val allContainerRequests = new mutable.HashMap[Int, Seq[ContainerRequest]]
-    rpIdToResourceProfile.keys.map { id =>
+    rpIdToResourceProfile.keys.foreach { id =>
       val profResource = rpIdToYarnResource.get(id)
       val result = amClient.getMatchingRequests(getContainerPriority(id), location, profResource)
         .asScala.flatMap(_.asScala)
@@ -317,7 +317,7 @@ private[yarn] class YarnAllocator(
         customSparkResources
       }
       val resource =
-        Resource.newInstance(resourcesWithDefaults.totalMemMiB, resourcesWithDefaults.cores)
+        Resource.newInstance(resourcesWithDefaults.totalMemMiB.toInt, resourcesWithDefaults.cores)
       ResourceRequestHelper.setResourceRequests(customResources, resource)
       logDebug(s"Created resource capability: $resource")
       rpIdToYarnResource.putIfAbsent(rp.id, resource)
@@ -781,7 +781,7 @@ private[yarn] class YarnAllocator(
         val (exitCausedByApp, containerExitReason) = exitStatus match {
           case ContainerExitStatus.SUCCESS =>
             (false, s"Executor for container $containerId exited because of a YARN event (e.g., " +
-              "pre-emption) and not because of an error in the running job.")
+              "preemption) and not because of an error in the running job.")
           case ContainerExitStatus.PREEMPTED =>
             // Preemption is not the fault of the running tasks, since YARN preempts containers
             // merely to do resource sharing, and tasks that fail due to preempted executors could
